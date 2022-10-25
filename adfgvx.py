@@ -1,7 +1,13 @@
 import string
+import json
 import unicodedata
 import numpy as np
 from random import randint
+import assets
+import sys
+from PyQt5 import QtWidgets, QtCore
+from PyQt5.QtWidgets import QApplication, QMainWindow
+
 
 matrix55 = np.empty((5,5), dtype=str)
 matrix66 = np.empty((6,6), dtype=str)
@@ -13,7 +19,7 @@ def replaceDigits(text):
     return text
 
 
-def convertStringRepresentationsBack(text):
+def replaceDigitsBack(text):
     text = text.replace("XMEZERAX", " ").replace("XNULAX", "0").replace("XJEDNAX", "1").replace("XDVAX", "2").replace("XTRIX", "3").replace("XCTYRIX", "4").replace("XPETX", "5").replace("XSESTX", "6").replace("XSEDMX", "7").replace("XOSMX", "8").replace("XDEVETX", "9")
     return text
 
@@ -103,51 +109,143 @@ def findPosition(matrix, letter):
     return x, y
 
 
-def encode():
-    OT = "Dal bych si pivo"
-    OT = normalizeText(OT)
-    indexes55 = {0:"A",1:"D",2:"F",3:"G",4:"X"}
-    indexes66 = {0:"A",1:"D",2:"F",3:"G",4:"V",5:"X"}
-    keyMatrix55 = makeMatrix55()
-    keyMatrix66 = makeMatrix66()
-    OTsub = ""
-    OTsusb = ""
-    #print(keyMatrix55) TADY BUDE EXPORT!!!! TAK NA TO NEZAPOMEŇ, DĚKUJI
-    for m in OT:
-        m1, n1 = findPosition(keyMatrix55, m)
-        OTsusb += indexes55[m1] + indexes55[n1]
-    print(OTsusb)
-    # for m in OT:
-    #     m1, n1 = findPosition(keyMatrix66, m)
-    #     OTsub += indexes66[m1]
-    #     OTsub += indexes66[n1]
-    # print(OTsub)
-    # return OTsub
-
-
-def transposition():
-    from math import ceil
-    klic = "kolotoc"
-    klic = checkDuplicates(klic)
-    klic.upper()
-    ST = "DDAAFDXGAGFXAGGA"
-    n = len(ST)
-    cols = len(klic)
-    rows = ceil(n / cols)
-    k = 0
-    print(rows, cols)
-    matrix = np.empty((rows,cols), dtype=str)
-    for i in range(rows):
-        for j in range(cols):
-            if k == n:
-                break
-            matrix[i][j] = ST[k]
-            k += 1
-    print(matrix)
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (np.int_, np.intc, np.intp, np.int8,
+                            np.int16, np.int32, np.int64, np.uint8,
+                            np.uint16, np.uint32, np.uint64)):
+            return int(obj)
+        elif isinstance(obj, (np.float_, np.float16, np.float32,
+                              np.float64)):
+            return float(obj)
+        elif isinstance(obj, (np.ndarray,)):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
     
 
+from PyQt5.uic import loadUi
 
 
+class MyApp(QMainWindow):
 
-# encode()
-transposition()
+
+    def transposition(self, ST):
+        from math import ceil
+        klic = self.klic.text()
+        klic = checkDuplicates(klic)
+        klic.upper()
+        n = len(ST)
+        cols = len(klic)
+        rows = ceil(n / cols)
+
+        k = 0
+        matrix = np.empty((rows,cols), dtype=str)
+        for i in range(rows):
+            for j in range(cols):
+                if k == n or k > n:
+                    matrix[i][j] = " "
+                else:
+                    matrix[i][j] = ST[k]
+                    k += 1
+        print(matrix)
+        klic = list(klic)
+        indexes = list(range(cols))
+        keyVal = dict(zip(indexes, klic))
+        sortedKeyVal = dict(sorted(keyVal.items(), key=lambda item: item[1]))
+
+        arr = []
+        for key, _ in sortedKeyVal.items():
+            arr.append(key)
+
+        matrix = matrix[:,arr]
+
+        return matrix
+
+
+    def encode(self):
+        OT = self.input.text()
+        OT = normalizeText(OT)
+        OTsub = ""
+        if self.adfgx.isChecked():
+            indexes55 = {0:"A",1:"D",2:"F",3:"G",4:"X"}
+            keyMatrix = makeMatrix55()
+            for m in OT:
+                m1, n1 = findPosition(keyMatrix, m)
+                OTsub += indexes55[m1] + indexes55[n1]
+    
+        elif self.adfgvx.isChecked():
+            indexes66 = {0:"A",1:"D",2:"F",3:"G",4:"V",5:"X"}
+            keyMatrix = makeMatrix66()
+            for m in OT:
+                m1, n1 = findPosition(keyMatrix, m)
+                OTsub += indexes66[m1]
+                OTsub += indexes66[n1]
+
+        dumped = json.dumps(keyMatrix, cls=NumpyEncoder)
+        with open('keyMatrix.json', 'w') as F:
+            F.write(dumped) 
+
+        self.displayData(keyMatrix)
+        self.output.setText(OTsub)
+
+
+    def decode(self):
+        from textwrap import wrap
+        ST = self.input.text()
+        with open('keyMatrix.json', 'r') as F:
+            keyMatrix = json.loads(F.read())
+        # matrix = self.transposition(ST)
+        # for i in range(len(keyMatrix)):
+        #     for j in range(len(keyMatrix)):
+        #             if keyMatrix[j][i] != " ":
+        #                 ST += keyMatrix[j][i]
+        #             else:
+        #                 continue
+
+        ST = wrap(ST, 2)
+        output = ""
+        if self.adfgx.isChecked():
+            indexes55 = {0:"A",1:"D",2:"F",3:"G",4:"X"}
+            for m in ST:
+                for i in range(len(keyMatrix)):
+                    for j in range(len(keyMatrix)):
+                        if m[0] == indexes55[i] and m[1] == indexes55[j]:
+                            output += keyMatrix[i][j]
+        elif self.adfgvx.isChecked():
+            indexes66 = {0:"A",1:"D",2:"F",3:"G",4:"V",5:"X"}
+            for m in ST:
+                for i in range(len(keyMatrix)):
+                    for j in range(len(keyMatrix)):
+                        if m[0] == indexes66[i] and m[1] == indexes66[j]:
+                            output += keyMatrix[i][j]
+
+        self.output.setText(output)
+
+
+    def displayData(self, keyMatrix):
+        numcols = len(keyMatrix[0])
+        numrows = len(keyMatrix)
+        self.matrix.setColumnCount(numcols)
+        self.matrix.setRowCount(numrows)
+        self.matrix.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.matrix.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        for row in range(numrows):
+            for column in range(numcols):
+                item = QtWidgets.QTableWidgetItem(keyMatrix[row][column])
+                item.setTextAlignment(QtCore.Qt.AlignCenter)
+                self.matrix.setItem(row, column, item)
+
+
+    def __init__(self):
+        super(MyApp, self).__init__()
+        window = loadUi("gui.ui", self)
+
+
+        self.zasifrovat.clicked.connect(self.encode)
+        self.desifrovat.clicked.connect(self.decode)
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    w = MyApp()
+    w.show()
+    sys.exit(app.exec_())
