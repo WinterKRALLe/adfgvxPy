@@ -43,7 +43,6 @@ def normalizeText(text:str):
     text = encoding(text)
     text = upperAndPunctuation(text)
     text = replaceDigits(text)
-    text = text.replace("Q", "KVE")
     return text
 
 
@@ -71,31 +70,6 @@ def swapChars(text):
     return text
 
 
-def makeMatrix55():
-    alphabet = string.ascii_uppercase
-    alphabet = alphabet.replace("W", "V")
-    text = checkDuplicates(alphabet)
-    text = swapChars(text)
-    k = 0
-    for i in range(len(matrix55)):
-        for j in range(len(matrix55)):
-            matrix55[i][j] = text[k]
-            k += 1
-    return matrix55
-
-
-def makeMatrix66():
-    alphabet = string.ascii_uppercase
-    nums = "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
-    nums = "".join(nums)
-    text = alphabet + nums
-    text = swapChars(text)
-    k = 0
-    for i in range(len(matrix66)):
-        for j in range(len(matrix66)):
-            matrix66[i][j] = text[k]
-            k += 1
-    return matrix66
 
 
 def findPosition(matrix, letter):
@@ -129,53 +103,111 @@ from PyQt5.uic import loadUi
 class MyApp(QMainWindow):
 
 
-    def transposition(self, ST):
+    def makeMatrix55(self):
+        alphabet = string.ascii_uppercase
+        if self.cz.isChecked():
+            alphabet = alphabet.replace("W", "V")
+        elif self.sk.isChecked():
+            alphabet = alphabet.replace("J", "I")
+        text = checkDuplicates(alphabet)
+        text = swapChars(text)
+        k = 0
+        for i in range(len(matrix55)):
+            for j in range(len(matrix55)):
+                matrix55[i][j] = text[k]
+                k += 1
+        return matrix55
+
+
+    def makeMatrix66(self):
+        alphabet = string.ascii_uppercase
+        nums = "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
+        nums = "".join(nums)
+        text = alphabet + nums
+        text = swapChars(text)
+        k = 0
+        for i in range(len(matrix66)):
+            for j in range(len(matrix66)):
+                matrix66[i][j] = text[k]
+                k += 1
+        return matrix66
+
+
+    def transposition(self, ST, klic, way=""):
         from math import ceil
-        klic = self.klic.text()
         klic = checkDuplicates(klic)
         klic.upper()
         n = len(ST)
         cols = len(klic)
         rows = ceil(n / cols)
-
         k = 0
         matrix = np.empty((rows,cols), dtype=str)
-        for i in range(rows):
-            for j in range(cols):
-                if k == n or k > n:
-                    matrix[i][j] = " "
-                else:
-                    matrix[i][j] = ST[k]
-                    k += 1
-        print(matrix)
+        
         klic = list(klic)
         indexes = list(range(cols))
         keyVal = dict(zip(indexes, klic))
+        output = ""
         sortedKeyVal = dict(sorted(keyVal.items(), key=lambda item: item[1]))
+        if way == "encode":
+            for i in range(rows):
+                for j in range(cols):
+                    if k == n or k > n:
+                        matrix[i][j] = " "
+                    else:
+                        matrix[i][j] = ST[k]
+                        k += 1
+            arr = []
+            for key, _ in sortedKeyVal.items():
+                arr.append(key)
 
-        arr = []
-        for key, _ in sortedKeyVal.items():
-            arr.append(key)
+            sortedMatrix = matrix[:,arr]
 
-        matrix = matrix[:,arr]
+            for column in zip(*sortedMatrix):
+                for col in column:
+                    if col != " ":
+                        output += col
+                    else:
+                        continue
+        elif way == "decode":
+            for i in range(cols):
+                for j in range(rows):
+                    if k == n or k > n:
+                        matrix[j][i] = " "
+                    else:
+                        matrix[j][i] = ST[k]
+                        k += 1
+            arr = []
+            for key, _ in sortedKeyVal.items():
+                arr.append(key)
+            matrix = matrix[:,arr]
+            np.transpose(matrix)
 
-        return matrix
+            print(ST)
+            print(matrix)
+            for i in matrix:
+                for j in i:
+                    if j != " ":
+                        output += j
+                    else:
+                        continue
+            print(output)
+        return output
 
 
     def encode(self):
-        OT = self.input.text()
+        OT = self.input.toPlainText()
         OT = normalizeText(OT)
         OTsub = ""
         if self.adfgx.isChecked():
             indexes55 = {0:"A",1:"D",2:"F",3:"G",4:"X"}
-            keyMatrix = makeMatrix55()
+            keyMatrix = self.makeMatrix55()
             for m in OT:
                 m1, n1 = findPosition(keyMatrix, m)
                 OTsub += indexes55[m1] + indexes55[n1]
     
         elif self.adfgvx.isChecked():
             indexes66 = {0:"A",1:"D",2:"F",3:"G",4:"V",5:"X"}
-            keyMatrix = makeMatrix66()
+            keyMatrix = self.makeMatrix66()
             for m in OT:
                 m1, n1 = findPosition(keyMatrix, m)
                 OTsub += indexes66[m1]
@@ -183,25 +215,26 @@ class MyApp(QMainWindow):
 
         dumped = json.dumps(keyMatrix, cls=NumpyEncoder)
         with open('keyMatrix.json', 'w') as F:
-            F.write(dumped) 
-
+            F.write(dumped)
+        klic = self.klic.text()
+        if len(klic) != 0:
+            output = self.transposition(OTsub, klic, way = "encode")
+            self.output.setText(output)
+        else:
+            self.output.setText(OTsub)
         self.displayData(keyMatrix)
-        self.output.setText(OTsub)
 
 
     def decode(self):
         from textwrap import wrap
-        ST = self.input.text()
+        ST = self.input.toPlainText()
         with open('keyMatrix.json', 'r') as F:
             keyMatrix = json.loads(F.read())
-        # matrix = self.transposition(ST)
-        # for i in range(len(keyMatrix)):
-        #     for j in range(len(keyMatrix)):
-        #             if keyMatrix[j][i] != " ":
-        #                 ST += keyMatrix[j][i]
-        #             else:
-        #                 continue
-
+        klic = self.klic.text()
+        klic = checkDuplicates(klic)
+        klic.upper()
+        if len(klic) != 0:
+            ST = self.transposition(ST, klic, way = "decode")
         ST = wrap(ST, 2)
         output = ""
         if self.adfgx.isChecked():
@@ -218,7 +251,7 @@ class MyApp(QMainWindow):
                     for j in range(len(keyMatrix)):
                         if m[0] == indexes66[i] and m[1] == indexes66[j]:
                             output += keyMatrix[i][j]
-
+        output = replaceDigitsBack(output)
         self.output.setText(output)
 
 

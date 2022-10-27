@@ -236,7 +236,7 @@ background:#282828;border: 2px solid orange; color: #FFF;gridline-color: orange;
     <property name="styleSheet">
      <string notr="true">background: #282828; border-radius: 20px</string>
     </property>
-    <widget class="QLineEdit" name="input">
+    <widget class="QTextEdit" name="input">
      <property name="geometry">
       <rect>
        <x>10</x>
@@ -252,9 +252,6 @@ background:#282828;border: 2px solid orange; color: #FFF;gridline-color: orange;
      </property>
      <property name="styleSheet">
       <string notr="true">border: 2px solid orange; padding: 4px</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
      </property>
     </widget>
    </widget>
